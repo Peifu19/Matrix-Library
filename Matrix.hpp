@@ -1,6 +1,4 @@
-// Matrix.hpp
 #pragma once
-#include <xkeycheck.h>
 
 template<class T>
 class Matrix
@@ -11,9 +9,12 @@ public:
 	Matrix(int row, int col);
 	Matrix(int row, int col, const T& val);
 	Matrix(const Matrix<T>& matrix);
-	// Matrix(const Matrix<T>&& matrix) noexcept;//move
+	Matrix(Matrix<T>&& matrix) noexcept;//move
+
 	virtual ~Matrix();
+
 	Matrix<T>& operator=(const Matrix<T>& matrix);
+	Matrix<T>& operator=(Matrix<T>&& matrix);//move
 
 	int row() const { return m_row; }
 	int column() const { return m_col; }
@@ -23,8 +24,21 @@ public:
 	void show() const;//show elements
 
 	// operator []
-	T* operator[](int i) { return m_element[i]; }
-	const T* operator[](int i) const { return m_element[i]; }
+	T*& operator[](int i) { return m_element[i]; }
+	const T* operator[](int i) const 
+	{
+		return const_cast<const T*>(m_element[i]);
+	}
+	T& at(int i, int j)
+	{
+		// check i and j
+		return m_element[i][j];
+	}
+	const T& at(int i, int j) const
+	{
+		// check i and j
+		return m_element[i][j];
+	}
 
 	// operator + 
 	Matrix<T> operator + ()// positive
@@ -40,8 +54,8 @@ public:
 	Matrix<T>& operator -= (const Matrix<T>& mtx);
 
 	// operator *
-	Matrix<T> operator * (const Matrix<T>& mtx) const;
-	Matrix<T>& operator *= (const Matrix<T>& mtx);
+	//Matrix<T> operator * (const Matrix<T>& mtx) const;
+	//Matrix<T>& operator *= (const Matrix<T>& mtx);
 
 protected:
 	int m_row;
@@ -49,6 +63,7 @@ protected:
 	T** m_element;
 private:
 	void initialize();
+	void move(Matrix<T>& matrix);
 };
 
 
@@ -80,10 +95,23 @@ inline Matrix<T>::Matrix(const Matrix<T>& matrix)
 	this->copy(matrix);
 }
 
+template<class T>
+inline Matrix<T>::Matrix(Matrix<T>&& matrix) noexcept
+{
+	m_row = matrix.m_row;
+	m_col = matrix.m_col;
+	this->move(matrix);
+}
+
 
 template<class T>
 inline Matrix<T>::~Matrix()
 {
+	if (m_element == nullptr)
+	{
+		return;
+	}
+
 	for (int i = 0; i < m_row; i++)
 	{
 		delete[] m_element[i];
@@ -94,7 +122,23 @@ inline Matrix<T>::~Matrix()
 template<class T>
 inline Matrix<T>& Matrix<T>::operator=(const Matrix<T>& matrix)
 {
-	this->copy(matrix);
+	if (this==&matrix)
+	{
+		return *this;
+	}
+	else
+	{
+		this->copy(matrix);
+	}
+}
+
+template<class T>
+inline Matrix<T>& Matrix<T>::operator=(Matrix<T>&& matrix)
+{
+	m_row = matrix.m_row;
+	m_col = matrix.m_col;
+	this->move(matrix);
+	return *this;
 }
 
 template<class T>
@@ -109,7 +153,7 @@ inline void Matrix<T>::copy(const Matrix<T>& matrix)
 	{
 		for (int j = 0; j < m_col; j++)
 		{
-			m_element[i][j] = matrix.m_element[i][j];
+			m_element[i][j] = matrix[i][j];
 		}
 	}
 }
@@ -141,6 +185,13 @@ inline void Matrix<T>::initialize()
 	{
 		m_element[i] = new T[m_col];
 	}
+}
+
+template<class T>
+inline void Matrix<T>::move(Matrix<T>& matrix)
+{
+	m_element = matrix.m_element;
+	matrix.m_element = nullptr;
 }
 
 template<class T>
